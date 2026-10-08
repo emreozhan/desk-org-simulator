@@ -22,7 +22,10 @@ Doğrulama: `npm run check` (tsc + eslint + vitest + vite build).
 | Kol tabanını sürükle | Kelepçeyi masa üstünde taşır |
 | Nesneyi sürükle | Masada taşır; üstündeki nesneler (kasa üstündeki modem) birlikte gelir |
 | Oklar, PageUp/PageDown | Seçiliyi 10 mm taşır (Shift: 1 mm) |
-| Q / E | Seçili nesneyi 15° döndürür |
+| Q / E | Nesneyi 15° döndürür; monitörde ekranın bakış yönünü VESA noktası sabit kalarak çevirir (Shift: 1°) |
+| R | Nesneyi 90° çevirir (Shift: ters yön); monitörü yatay ↔ dikey yapar |
+| Z / X | Monitörü aşağı / yukarı eğer (5°, Shift: 1°) |
+| 0 | Yönü sıfırlar; monitör düz karşıya bakar, eğim ve döndürme sıfırlanır |
 | 1–5 | Kamera: perspektif, ön, üst, yan, göz |
 | F | Seçime odaklanır |
 | Ctrl+Z / Ctrl+Y | Geri al / yinele |

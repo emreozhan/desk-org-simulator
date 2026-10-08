@@ -113,9 +113,9 @@ export class Hud {
     const sel = this.store.selection;
     this.hint.textContent =
       sel?.kind === "arm"
-        ? "Monitörü sürükle · Shift: öne-arkaya · oklar/PgUp: 10 mm · tabanı sürükle: kelepçeyi taşı"
+        ? "Monitörü sürükle · Shift: öne-arkaya · Q/E: ekranı çevir · Z/X: eğ · R: yatay/dikey · 0: düz bak"
         : sel?.kind === "item"
-          ? "Sürükle: taşı · Q/E: döndür · Del: sil"
+          ? "Sürükle: taşı · Q/E: 15° döndür (Shift 1°) · R: 90° · 0: sıfırla · Del: sil"
           : "Bir monitöre ya da nesneye tıkla · sol tuş: döndür · sağ tuş: kaydır · tekerlek: yakınlaş";
     const n = a.collisions.length;
     this.status.dataset.level = n ? "bad" : "ok";

@@ -4,7 +4,7 @@ import type { Store } from "../app/store";
 import { wallZ } from "../model/analysis";
 import { forward, solveIK } from "../model/kinematics";
 import type { Vec3 } from "../model/types";
-import { clamp } from "../model/vec";
+import { clamp, wrapDeg } from "../model/vec";
 import type { PickTag } from "./parts";
 import type { SceneController } from "./controller";
 import type { World } from "./world";
@@ -245,12 +245,59 @@ export class Interaction {
         it.elevation = Math.max(0, it.elevation + v[1]);
       });
       this.commitSoon();
-    } else if (it && (e.code === "KeyQ" || e.code === "KeyE")) {
-      s.mutate(() => (it.rotY = (it.rotY + (e.code === "KeyQ" ? 15 : -15) + 540) % 360 - 180));
-      this.commitSoon();
     } else if (it && e.code === "Delete") {
       s.removeItem(it.id);
+    } else if (it || arm) {
+      if (this.orient(e)) e.preventDefault();
     }
+  }
+
+  /**
+   * Yön kısayolları. Q/E: 15° (Shift 1°) sola/sağa, R: 90° (Shift ters), 0: sıfırla.
+   * Monitörde Q/E ekranın bakış yönünü VESA noktası sabit kalarak çevirir; R yatay/dikey yapar; Z/X eğer.
+   */
+  private orient(e: KeyboardEvent): boolean {
+    const s = this.store;
+    const fine = e.shiftKey;
+    const yawKey = e.code === "KeyQ" ? 1 : e.code === "KeyE" ? -1 : 0;
+    const reset = e.code === "Digit0" || e.code === "Numpad0";
+    const it = s.selectedItem();
+    if (it) {
+      let next: number | null = null;
+      if (yawKey) next = it.rotY + yawKey * (fine ? 1 : 15);
+      else if (e.code === "KeyR") next = it.rotY + (fine ? 90 : -90);
+      else if (reset) next = 0;
+      if (next === null) return false;
+      const rot = wrapDeg(next);
+      s.mutate(() => (it.rotY = rot));
+      s.say(`${it.name}: dönüş ${fmtDeg(rot)}`);
+      this.commitSoon();
+      return true;
+    }
+    const arm = s.selectedArm();
+    if (!arm) return false;
+    const f = forward(arm);
+    const id = { tag: { kind: "arm" as const, id: arm.id, part: "monitor" as const } };
+    if (yawKey || reset) {
+      this.moveMonitor({ ...id, facing: reset ? 0 : f.facingYaw + yawKey * (fine ? 1 : 15) }, f.plate);
+      if (reset) s.mutate(() => (arm.pose.tilt = arm.pose.roll = 0));
+      const r = s.ik.get(arm.id);
+      s.say(
+        r && !r.facingKept
+          ? `${arm.name}: baş dönüş sınırına gelindi`
+          : `${arm.name}: ekran yönü ${fmtDeg(wrapDeg(forward(arm).facingYaw))}`,
+      );
+    } else if (e.code === "KeyZ" || e.code === "KeyX") {
+      const t = clamp(arm.pose.tilt + (e.code === "KeyX" ? 1 : -1) * (fine ? 1 : 5), ...arm.limits.tilt);
+      s.mutate(() => (arm.pose.tilt = t));
+      s.say(`${arm.name}: eğim ${fmtDeg(t)}`);
+    } else if (e.code === "KeyR") {
+      const roll = Math.abs(arm.pose.roll) > 45 ? 0 : clamp(fine ? -90 : 90, ...arm.limits.roll);
+      s.mutate(() => (arm.pose.roll = roll));
+      s.say(`${arm.name}: ${roll === 0 ? "yatay" : "dikey"}`);
+    } else return false;
+    this.commitSoon();
+    return true;
   }
 
   /** Ardışık ok tuşu adımları tek geri-al adımı olur. */
@@ -259,6 +306,8 @@ export class Interaction {
     this.nudgeTimer = window.setTimeout(() => this.store.commit(), 450);
   }
 }
+
+const fmtDeg = (v: number): string => `${v < 0 ? "−" : ""}${Math.abs(Math.round(v * 10) / 10)}°`;
 
 function isVisible(o: THREE.Object3D): boolean {
   for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) return false;

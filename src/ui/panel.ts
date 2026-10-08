@@ -583,7 +583,7 @@ export class Panel {
 
     const sel = this.store.selectedItem();
     if (!sel) {
-      root.append(h("div", { class: "empty" }, h("p", { text: "Bir nesneye tıkla ve sürükle. Q / E döndürür, ok tuşları 10 mm taşır, PageUp/PageDown yükseltir." })));
+      root.append(h("div", { class: "empty" }, h("p", { text: "Bir nesneye tıkla ve sürükle. Q / E 15° döndürür (Shift ile 1°), R 90° çevirir, 0 yönü sıfırlar. Ok tuşları 10 mm taşır, PageUp/PageDown yükseltir." })));
       return;
     }
     const id = sel.id;
@@ -746,7 +746,10 @@ export class Panel {
             ["Sürükle", "Monitörü sağa-sola / yukarı-aşağı taşı"],
             ["Shift + sürükle", "Monitörü öne-arkaya taşı"],
             ["Oklar · PgUp/PgDn", "10 mm adım (Shift: 1 mm)"],
-            ["Q / E", "Seçili nesneyi döndür"],
+            ["Q / E", "Nesneyi 15° döndür · monitörde ekranı çevir (Shift: 1°)"],
+            ["R", "Nesneyi 90° çevir (Shift: ters) · monitörde yatay/dikey"],
+            ["Z / X", "Monitörü aşağı / yukarı eğ (5°, Shift: 1°)"],
+            ["0", "Yönü sıfırla · monitör düz karşıya bakar"],
             ["1 – 5", "Kamera: perspektif, ön, üst, yan, göz"],
             ["F", "Seçime odaklan"],
             ["Ctrl+Z / Ctrl+Y", "Geri al / yinele"],
