@@ -10,6 +10,8 @@ import { monitor27 } from "../model/defaults";
 import { clamp } from "../model/vec";
 import { envelope, loadSlots, parseLayout, saveSlots } from "../model/storage";
 import { fmt, h, s, signed } from "./dom";
+import type { PulseDetail } from "../app/shortcuts";
+import { JOINT_KEYS, SHORTCUTS } from "../app/shortcuts";
 
 type Tab = "arms" | "items" | "env" | "layout";
 const TABS: [Tab, string][] = [
@@ -76,6 +78,7 @@ export class Panel {
       nav.append(b);
     }
     this.body = h("div", { class: "panel__body" });
+    window.addEventListener("sim:pulse", (e) => this.onPulse((e as CustomEvent<PulseDetail>).detail));
     root.append(
       h(
         "header",
@@ -191,6 +194,38 @@ export class Panel {
     );
   }
 
+  /** Klavye tuşu rozeti; basılınca `is-pressed` ile yanar. */
+  private keycap(label: string, title?: string): HTMLElement {
+    return h("kbd", { class: "key", "data-key": label, title, text: label });
+  }
+
+  /** Alanı bir kısayola bağlar: etiketin yanına tuş rozetleri, vurgulama için `data-pulse`. */
+  private keyed(field: HTMLElement, target: string, keys: string[]): HTMLElement {
+    field.dataset.pulse = target;
+    const caps = h("span", { class: "keys-inline", "aria-hidden": "true" }, ...keys.map((k) => this.keycap(k)));
+    field.querySelector(".field__label")?.append(caps);
+    return field;
+  }
+
+  private onPulse(d: PulseDetail): void {
+    const el = this.body.querySelector<HTMLElement>(`[data-pulse="${d.target}"]`);
+    if (!el) return;
+    el.classList.remove("is-pulse");
+    void el.offsetWidth; // animasyonu yeniden başlat
+    el.classList.add("is-pulse");
+    for (const k of el.querySelectorAll<HTMLElement>(".key")) k.classList.toggle("is-pressed", k.dataset.key === d.key);
+    window.clearTimeout(Number(el.dataset.pulseTimer));
+    el.dataset.pulseTimer = String(
+      window.setTimeout(() => {
+        el.classList.remove("is-pulse");
+        for (const k of el.querySelectorAll(".key")) k.classList.remove("is-pressed");
+      }, 700),
+    );
+    const box = el.getBoundingClientRect();
+    const view = this.body.getBoundingClientRect();
+    if (box.top < view.top || box.bottom > view.bottom) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
   private section(title: string, ...children: Child[]): HTMLElement {
     return h("section", { class: "sec" }, h("h2", { class: "sec__title" }, h("span", { text: title })), ...children);
   }
@@ -250,11 +285,23 @@ export class Panel {
     num.addEventListener("keydown", (e) => {
       if (e.key === "Enter") num.blur();
     });
+    // Tuşlar kaydırıcının uçlarında: soldaki azaltır, sağdaki artırır.
+    const jk = JOINT_KEYS[j];
+    const decKey = jk ? this.keycap(jk.dec, `${jk.dec}: ${meta.label} azalt (Shift: 1°)`) : h("span");
+    const incKey = jk ? this.keycap(jk.inc, `${jk.inc}: ${meta.label} artır (Shift: 1°)`) : this.keycap("R", "R: yatay ↔ dikey");
     const row = h(
       "div",
-      { class: "joint", title: meta.hint },
+      { class: "joint", title: meta.hint, "data-pulse": `joint:${j}` },
       h("div", { class: "joint__head" }, h("span", { class: "joint__name", text: meta.label }), lim),
-      h("div", { class: "joint__ctl" }, svg, range, h("span", { class: "num-wrap" }, num, h("span", { class: "field__unit", text: "°" }))),
+      h(
+        "div",
+        { class: "joint__ctl" },
+        svg,
+        decKey,
+        range,
+        incKey,
+        h("span", { class: "num-wrap" }, num, h("span", { class: "field__unit", text: "°" })),
+      ),
     );
     let arcKey = "";
     this.refreshers.push(() => {
@@ -389,9 +436,9 @@ export class Panel {
         h(
           "div",
           { class: "grid3" },
-          target("x", "X", "Masa merkezinden sağa (+) / sola (−)"),
-          target("y", "Y", "Masa üstünden yükseklik"),
-          target("z", "Z", "Masa merkezinden kullanıcıya (+) / duvara (−)"),
+          this.keyed(target("x", "X", "Masa merkezinden sağa (+) / sola (−)"), "vesa:x", ["←", "→"]),
+          this.keyed(target("y", "Y", "Masa üstünden yükseklik"), "vesa:y", ["PgDn", "PgUp"]),
+          this.keyed(target("z", "Z", "Masa merkezinden kullanıcıya (+) / duvara (−)"), "vesa:z", ["↑", "↓"]),
         ),
         ikNote,
       ),
@@ -600,9 +647,15 @@ export class Panel {
       this.section(
         "Seçili nesne",
         this.field("Ad", this.text(() => I().name, (v) => (I().name = v))),
-        h("div", { class: "grid3" }, n("x", "X", "mm"), n("z", "Z", "mm"), n("rotY", "Dönüş", "°", 15)),
+        h(
+          "div",
+          { class: "grid3" },
+          this.keyed(n("x", "X", "mm"), "item:x", ["←", "→"]),
+          this.keyed(n("z", "Z", "mm"), "item:z", ["↑", "↓"]),
+          this.keyed(n("rotY", "Dönüş", "°", 15), "item:rotY", ["Q", "E", "R"]),
+        ),
         h("div", { class: "grid3" }, n("w", "Genişlik", "mm", 5, 1), n("d", "Derinlik", "mm", 5, 1), n("h", "Yükseklik", "mm", 5, 1)),
-        h("div", { class: "grid2" }, n("elevation", "Taban yüksekliği", "mm", 5, 0), this.field("Renk", color)),
+        h("div", { class: "grid2" }, this.keyed(n("elevation", "Taban yüksekliği", "mm", 5, 0), "item:elevation", ["PgDn", "PgUp"]), this.field("Renk", color)),
         h("div", { class: "danger-row" }, this.button("Nesneyi sil", () => this.store.removeItem(id), "btn btn--danger")),
       ),
     );
@@ -739,23 +792,15 @@ export class Panel {
       ),
       this.section(
         "Kısayollar",
-        h(
-          "dl",
-          { class: "keys" },
-          ...[
-            ["Sürükle", "Monitörü sağa-sola / yukarı-aşağı taşı"],
-            ["Shift + sürükle", "Monitörü öne-arkaya taşı"],
-            ["Oklar · PgUp/PgDn", "10 mm adım (Shift: 1 mm)"],
-            ["Q / E", "Nesneyi 15° döndür · monitörde ekranı çevir (Shift: 1°)"],
-            ["R", "Nesneyi 90° çevir (Shift: ters) · monitörde yatay/dikey"],
-            ["Z / X", "Monitörü aşağı / yukarı eğ (5°, Shift: 1°)"],
-            ["0", "Yönü sıfırla · monitör düz karşıya bakar"],
-            ["1 – 5", "Kamera: perspektif, ön, üst, yan, göz"],
-            ["F", "Seçime odaklan"],
-            ["Ctrl+Z / Ctrl+Y", "Geri al / yinele"],
-            ["Esc", "Seçimi kaldır"],
-          ].flatMap(([k, v]) => [h("dt", {}, h("kbd", { text: k })), h("dd", { text: v })]),
+        ...SHORTCUTS.map((g) =>
+          h(
+            "div",
+            { class: "keys-group" },
+            h("h3", { class: "keys-group__title", text: g.group }),
+            h("dl", { class: "keys" }, ...g.rows.flatMap((r) => [h("dt", {}, h("kbd", { text: r.keys })), h("dd", { text: r.does })])),
+          ),
         ),
+        h("p", { class: "note", text: "Aynı tablo sahnede, monitörlerin solundaki duvar posterinde de var." }),
       ),
     );
   }

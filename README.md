@@ -21,18 +21,22 @@ Doğrulama: `npm run check` (tsc + eslint + vitest + vite build).
 | Shift + sürükle | Monitörü öne-arkaya taşır |
 | Kol tabanını sürükle | Kelepçeyi masa üstünde taşır |
 | Nesneyi sürükle | Masada taşır; üstündeki nesneler (kasa üstündeki modem) birlikte gelir |
-| Oklar, PageUp/PageDown | Seçiliyi 10 mm taşır (Shift: 1 mm) |
-| Q / E | Nesneyi 15° döndürür; monitörde ekranın bakış yönünü VESA noktası sabit kalarak çevirir (Shift: 1°) |
-| R | Nesneyi 90° çevirir (Shift: ters yön); monitörü yatay ↔ dikey yapar |
-| Z / X | Monitörü aşağı / yukarı eğer (5°, Shift: 1°) |
-| 0 | Yönü sıfırlar; monitör düz karşıya bakar, eğim ve döndürme sıfırlanır |
+| Oklar, PageUp/PageDown | Seçiliyi 10 mm taşır: monitörde VESA X/Z/Y, nesnede X/Z/taban (Shift: 1 mm) |
+| A / D | Omuz dönüşü −/+ 5° |
+| C / V | Dirsek dönüşü −/+ 5° |
+| S / W | Kaldırma −/+ 5° |
+| Q / E | Monitörde baş dönüşü −/+ 5°; nesnede dönüş −/+ 15° |
+| Z / X | Eğim −/+ 5° |
+| R | Monitörü yatay ↔ dikey yapar; nesneyi +90° çevirir (Shift: −90°) |
+| 0 | Monitör tam karşıya bakar, eğim ve döndürme 0; nesnenin dönüşü 0 |
+| Shift + tuş | İnce adım: 1° / 1 mm |
 | 1–5 | Kamera: perspektif, ön, üst, yan, göz |
 | F | Seçime odaklanır |
 | Ctrl+Z / Ctrl+Y | Geri al / yinele |
 | Esc | Seçimi kaldırır |
 | Sol / sağ tuş, tekerlek | Döndür / kaydır / yakınlaş |
 
-Panelde her eklemin kaydırıcısı, derece kutusu ve sınırlarını gösteren kadranı vardır. "VESA eklemi · hedef konum" alanına mm yazıp Enter'a basınca kol o noktaya çözülür.
+Panelde her eklemin kaydırıcısı, derece kutusu ve sınırlarını gösteren kadranı vardır. Kaydırıcının iki ucundaki tuş rozetleri o eklemin kısayoludur: sol tuş azaltır, sağ tuş artırır. Kısayola basınca ilgili satır ve tuş rozeti yanar. Kısayolların tek kaynağı [src/app/shortcuts.ts](src/app/shortcuts.ts); aynı tablo panelde ve sahnede monitörlerin solundaki duvar posterinde görünür. "VESA eklemi · hedef konum" alanına mm yazıp Enter'a basınca kol o noktaya çözülür.
 
 ## Model
 

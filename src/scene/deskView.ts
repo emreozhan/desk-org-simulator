@@ -3,7 +3,7 @@ import type { DeskSpec } from "../model/types";
 import { at, box, mesh, std } from "./parts";
 
 /** Masa, ayaklar, zemin ve arka duvar. Orijin masa üstünün merkezi. */
-export function buildRoom(desk: DeskSpec, wood: THREE.Texture): THREE.Group {
+export function buildRoom(desk: DeskSpec, wood: THREE.Texture, poster: THREE.Texture): THREE.Group {
   const g = new THREE.Group();
   const { width: W, depth: D, height: H, thickness: T } = desk;
   const wallZ = -D / 2 - desk.wallGap;
@@ -36,6 +36,17 @@ export function buildRoom(desk: DeskSpec, wood: THREE.Texture): THREE.Group {
   wall.position.set(0, -H + wallH / 2, wallZ);
   g.add(wall);
   g.add(at(mesh(box(9000, 80, 14), std("#ece8e1", 0.7), false), 0, -H + 40, wallZ + 7));
+
+  // Kısayol posteri: monitörlerin solunda, oturan kullanıcının göz hizası civarında.
+  const px = -W / 2 + 240;
+  const py = 640;
+  g.add(at(mesh(box(412, 312, 8), std("#141414", 0.5)), px, py, wallZ + 4));
+  const sheet = new THREE.Mesh(
+    new THREE.PlaneGeometry(400, 300),
+    std("#ffffff", 0.85, 0, { map: poster, emissive: "#ffffff", emissiveMap: poster, emissiveIntensity: 0.3 }),
+  );
+  sheet.receiveShadow = true;
+  g.add(at(sheet, px, py, wallZ + 8.5));
 
   // Duvardaki priz (fotoğrafta sağ üstte)
   g.add(at(mesh(box(80, 80, 10), std("#f1efe9", 0.5)), W / 2 - 40, 980, wallZ + 5));

@@ -1,6 +1,7 @@
 // Prosedürel dokular: topografik masa pedi, ceviz masa, monitör ekranları. Tohumlu, her açılışta aynı.
 import * as THREE from "three";
 import type { ScreenStyle } from "../model/types";
+import { SHORTCUTS } from "../app/shortcuts";
 
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -240,4 +241,79 @@ export function screenTexture(style: ScreenStyle, aniso: number): THREE.CanvasTe
   const t = toTexture(c, aniso);
   screenCache.set(style, t);
   return t;
+}
+
+/** Duvar posteri: kısayol tablosu (app/shortcuts.ts ile aynı içerik). 4:3, 400×300 mm için. */
+export function shortcutPoster(aniso: number): THREE.CanvasTexture {
+  const W = 1200;
+  const H = 900;
+  const [c, ctx] = canvas(W, H);
+  const ui = "Bahnschrift, 'Segoe UI', sans-serif";
+  const mono = "'Cascadia Mono', Consolas, monospace";
+  ctx.fillStyle = "#f2eee6";
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#ff6b35";
+  ctx.fillRect(0, 0, W, 104);
+  ctx.fillStyle = "#1a0d06";
+  ctx.font = `700 52px ${ui}`;
+  ctx.textBaseline = "middle";
+  ctx.fillText("KISAYOLLAR", 44, 54);
+  ctx.font = `400 26px ${ui}`;
+  ctx.textAlign = "right";
+  ctx.fillText("Masa Atölyesi · F80", W - 44, 56);
+  ctx.textAlign = "left";
+
+  const cap = (text: string, x: number, y: number): number => {
+    ctx.font = `600 22px ${mono}`;
+    const w = Math.max(36, ctx.measureText(text).width + 18);
+    ctx.fillStyle = "#e2ddd3";
+    ctx.beginPath();
+    ctx.roundRect(x, y - 19, w, 40, 6);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.roundRect(x, y - 21, w, 36, 6);
+    ctx.fill();
+    ctx.strokeStyle = "#b9b2a6";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = "#1b1c1f";
+    ctx.fillText(text, x + (w - ctx.measureText(text).width) / 2, y - 2);
+    return w;
+  };
+
+  const column = (groups: typeof SHORTCUTS, x: number, colW: number): void => {
+    let y = 150;
+    for (const g of groups) {
+      ctx.fillStyle = "#c2481c";
+      ctx.font = `700 25px ${ui}`;
+      ctx.fillText(g.group.toLocaleUpperCase("tr"), x, y);
+      ctx.fillStyle = "#c9c2b6";
+      ctx.fillRect(x, y + 20, colW, 2);
+      y += 54;
+      for (const r of g.rows) {
+        let kx = x;
+        r.keys.split(" / ").forEach((k, i) => {
+          if (i) {
+            ctx.fillStyle = "#8a8378";
+            ctx.font = `400 22px ${ui}`;
+            ctx.fillText("/", kx + 4, y);
+            kx += 20;
+          }
+          kx += cap(k, kx, y) + 4;
+        });
+        const dx = x + 214;
+        ctx.fillStyle = "#26272b";
+        ctx.font = `400 24px ${ui}`;
+        ctx.fillText(r.does, Math.max(dx, kx + 10), y, x + colW - Math.max(dx, kx + 10));
+        y += 47;
+      }
+      y += 18;
+    }
+  };
+  column(SHORTCUTS.slice(0, 1), 44, 520);
+  column(SHORTCUTS.slice(1), 620, 536);
+  ctx.fillStyle = "#c9c2b6";
+  ctx.fillRect(596, 136, 2, H - 176);
+  return toTexture(c, aniso);
 }

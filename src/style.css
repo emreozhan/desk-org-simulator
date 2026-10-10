@@ -513,9 +513,9 @@ select {
 
 .joint__ctl {
   display: grid;
-  grid-template-columns: 40px 1fr auto;
+  grid-template-columns: 40px 26px 1fr 26px auto;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .dial {
@@ -959,6 +959,76 @@ kbd {
   white-space: nowrap;
 }
 
+/* Kısayol rozetleri ve vurgu */
+.key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  font: 600 12px/1 var(--mono);
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-bottom-width: 3px;
+  border-radius: 4px;
+  transition: color 0.12s, background 0.12s, transform 0.12s, border-color 0.12s;
+}
+
+.joint:hover .key,
+.field:hover .key {
+  color: var(--text);
+}
+
+.key.is-pressed {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: #b8441c;
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+.keys-inline {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.keys-inline .key {
+  min-width: 20px;
+  height: 20px;
+  font-size: 11px;
+  border-bottom-width: 2px;
+}
+
+[data-pulse] {
+  border-radius: 4px;
+}
+
+.is-pulse {
+  animation: pulse 0.7s ease-out;
+}
+
+@keyframes pulse {
+  0% {
+    background: rgba(255, 107, 53, 0.28);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+
+.keys-group__title {
+  margin: 10px 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
 /* ── Dar ekran ─────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
@@ -981,5 +1051,9 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+  }
+  .is-pulse {
+    animation: none;
+    background: rgba(255, 107, 53, 0.18);
   }
 }

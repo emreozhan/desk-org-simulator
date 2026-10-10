@@ -7,7 +7,7 @@ import { ItemView } from "./itemView";
 import { Overlays } from "./overlays";
 import { buildRoom } from "./deskView";
 import { disposeTree } from "./parts";
-import { topoTexture, woodTexture } from "./textures";
+import { shortcutPoster, topoTexture, woodTexture } from "./textures";
 
 /** Düzen → sahne eşlemesi. Yalnız anahtarı değişen parçalar yeniden kurulur. */
 export class SceneController {
@@ -16,6 +16,7 @@ export class SceneController {
   private readonly aniso: number;
   private readonly topo: THREE.Texture;
   private readonly wood: THREE.Texture;
+  private readonly poster: THREE.Texture;
   private room: THREE.Group | null = null;
   private roomKey = "";
   private readonly arms = new Map<string, ArmView>();
@@ -29,6 +30,7 @@ export class SceneController {
     this.aniso = world.renderer.capabilities.getMaxAnisotropy();
     this.topo = topoTexture(this.aniso);
     this.wood = woodTexture(this.aniso);
+    this.poster = shortcutPoster(this.aniso);
     world.scene.add(this.overlays.group);
   }
 
@@ -44,7 +46,7 @@ export class SceneController {
         scene.remove(this.room);
         disposeTree(this.room);
       }
-      this.room = buildRoom(L.desk, this.wood);
+      this.room = buildRoom(L.desk, this.wood, this.poster);
       scene.add(this.room);
       this.roomKey = rk;
     }

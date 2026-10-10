@@ -5,6 +5,8 @@ import { wallZ } from "../model/analysis";
 import { forward, solveIK } from "../model/kinematics";
 import type { Vec3 } from "../model/types";
 import { clamp, wrapDeg } from "../model/vec";
+import { JOINT_META } from "../model/meta";
+import { FINE_STEP, ITEM_ROT_STEP, JOINT_BY_CODE, JOINT_STEP, MOVE_STEP, pulse } from "../app/shortcuts";
 import type { PickTag } from "./parts";
 import type { SceneController } from "./controller";
 import type { World } from "./world";
@@ -216,14 +218,15 @@ export class Interaction {
       s.select(null);
       return;
     }
-    const step = e.shiftKey ? 1 : 10;
-    const dir: Record<string, [number, number, number]> = {
-      ArrowLeft: [-step, 0, 0],
-      ArrowRight: [step, 0, 0],
-      ArrowUp: [0, 0, -step],
-      ArrowDown: [0, 0, step],
-      PageUp: [0, step, 0],
-      PageDown: [0, -step, 0],
+    const step = e.shiftKey ? FINE_STEP : MOVE_STEP;
+    // [x, y, z adımı, eksen, rozet]
+    const dir: Record<string, [number, number, number, "x" | "y" | "z", string]> = {
+      ArrowLeft: [-step, 0, 0, "x", "←"],
+      ArrowRight: [step, 0, 0, "x", "→"],
+      ArrowUp: [0, 0, -step, "z", "↑"],
+      ArrowDown: [0, 0, step, "z", "↓"],
+      PageUp: [0, step, 0, "y", "PgUp"],
+      PageDown: [0, -step, 0, "y", "PgDn"],
     };
     const v = dir[e.code];
     const arm = s.selectedArm();
@@ -236,6 +239,7 @@ export class Interaction {
         y: f.plate.y + v[1],
         z: f.plate.z + v[2],
       });
+      pulse(`vesa:${v[3]}`, v[4]);
       this.commitSoon();
     } else if (v && it) {
       e.preventDefault();
@@ -244,6 +248,7 @@ export class Interaction {
         it.z += v[2];
         it.elevation = Math.max(0, it.elevation + v[1]);
       });
+      pulse(`item:${v[3] === "y" ? "elevation" : v[3]}`, v[4]);
       this.commitSoon();
     } else if (it && e.code === "Delete") {
       s.removeItem(it.id);
@@ -253,48 +258,60 @@ export class Interaction {
   }
 
   /**
-   * Yön kısayolları. Q/E: 15° (Shift 1°) sola/sağa, R: 90° (Shift ters), 0: sıfırla.
-   * Monitörde Q/E ekranın bakış yönünü VESA noktası sabit kalarak çevirir; R yatay/dikey yapar; Z/X eğer.
+   * Yön kısayolları; tuşlar app/shortcuts.ts içindeki tabloyla panel kaydırıcılarına birebir bağlıdır.
+   * Monitörde her tuş çifti tek bir eklemi değiştirir (sol tuş azaltır, sağ tuş artırır).
    */
   private orient(e: KeyboardEvent): boolean {
     const s = this.store;
     const fine = e.shiftKey;
-    const yawKey = e.code === "KeyQ" ? 1 : e.code === "KeyE" ? -1 : 0;
     const reset = e.code === "Digit0" || e.code === "Numpad0";
     const it = s.selectedItem();
     if (it) {
       let next: number | null = null;
-      if (yawKey) next = it.rotY + yawKey * (fine ? 1 : 15);
-      else if (e.code === "KeyR") next = it.rotY + (fine ? 90 : -90);
-      else if (reset) next = 0;
+      let key = "";
+      if (e.code === "KeyQ" || e.code === "KeyE") {
+        key = e.code.slice(3);
+        next = it.rotY + (e.code === "KeyQ" ? -1 : 1) * (fine ? FINE_STEP : ITEM_ROT_STEP);
+      } else if (e.code === "KeyR") {
+        key = "R";
+        next = it.rotY + (fine ? -90 : 90);
+      } else if (reset) {
+        key = "0";
+        next = 0;
+      }
       if (next === null) return false;
       const rot = wrapDeg(next);
       s.mutate(() => (it.rotY = rot));
       s.say(`${it.name}: dönüş ${fmtDeg(rot)}`);
+      pulse("item:rotY", key);
       this.commitSoon();
       return true;
     }
     const arm = s.selectedArm();
     if (!arm) return false;
-    const f = forward(arm);
-    const id = { tag: { kind: "arm" as const, id: arm.id, part: "monitor" as const } };
-    if (yawKey || reset) {
-      this.moveMonitor({ ...id, facing: reset ? 0 : f.facingYaw + yawKey * (fine ? 1 : 15) }, f.plate);
-      if (reset) s.mutate(() => (arm.pose.tilt = arm.pose.roll = 0));
-      const r = s.ik.get(arm.id);
-      s.say(
-        r && !r.facingKept
-          ? `${arm.name}: baş dönüş sınırına gelindi`
-          : `${arm.name}: ekran yönü ${fmtDeg(wrapDeg(forward(arm).facingYaw))}`,
-      );
-    } else if (e.code === "KeyZ" || e.code === "KeyX") {
-      const t = clamp(arm.pose.tilt + (e.code === "KeyX" ? 1 : -1) * (fine ? 1 : 5), ...arm.limits.tilt);
-      s.mutate(() => (arm.pose.tilt = t));
-      s.say(`${arm.name}: eğim ${fmtDeg(t)}`);
+    const joint = JOINT_BY_CODE[e.code];
+    if (joint) {
+      const [j, sign] = joint;
+      const [lo, hi] = arm.limits[j];
+      const v = clamp(arm.pose[j] + sign * (fine ? FINE_STEP : JOINT_STEP), lo, hi);
+      s.mutate(() => (arm.pose[j] = v));
+      const atLimit = v <= lo || v >= hi;
+      s.say(`${arm.name}: ${JOINT_META[j].label} ${fmtDeg(v)}${atLimit ? " · sınırda" : ""}`);
+      pulse(`joint:${j}`, e.code.slice(3));
     } else if (e.code === "KeyR") {
       const roll = Math.abs(arm.pose.roll) > 45 ? 0 : clamp(fine ? -90 : 90, ...arm.limits.roll);
       s.mutate(() => (arm.pose.roll = roll));
       s.say(`${arm.name}: ${roll === 0 ? "yatay" : "dikey"}`);
+      pulse("joint:roll", "R");
+    } else if (reset) {
+      s.mutate(() => {
+        // Ekran tam karşıya (+Z) bakacak baş açısı; yalnız baş, eğim ve döndürme kaydırıcıları değişir.
+        arm.pose.swivel = clamp(wrapDeg(-arm.pose.shoulder - arm.pose.elbow), ...arm.limits.swivel);
+        arm.pose.tilt = 0;
+        arm.pose.roll = 0;
+      });
+      s.say(`${arm.name}: düz bakış`);
+      for (const j of ["swivel", "tilt", "roll"]) pulse(`joint:${j}`, "0");
     } else return false;
     this.commitSoon();
     return true;
