@@ -4,7 +4,7 @@ import { wallZ } from "../model/analysis";
 import type { ChangeReason, Store, ViewOptions } from "../app/store";
 import type { Arm, DeskItem, ItemKind, JointName, MonitorSpec, ScreenStyle } from "../model/types";
 import { ITEM_KINDS, JOINTS } from "../model/types";
-import { ITEM_META, JOINT_META } from "../model/meta";
+import { ASPECTS, ITEM_META, JOINT_META } from "../model/meta";
 import { aimAt, forward, reachInfo, solveIK } from "../model/kinematics";
 import { monitor27 } from "../model/defaults";
 import { clamp } from "../model/vec";
@@ -30,14 +30,6 @@ interface NumOpts {
 
 type Child = Node | string | null | undefined | false;
 
-const ASPECTS: [string, number, number][] = [
-  ["16:9", 16, 9],
-  ["16:10", 16, 10],
-  ["21:9", 21, 9],
-  ["32:9", 32, 9],
-  ["3:2", 3, 2],
-  ["4:3", 4, 3],
-];
 
 const SCREENS: [ScreenStyle, string][] = [
   ["code", "Kod editörü"],
@@ -107,6 +99,7 @@ export class Panel {
       const sel = this.store.selection;
       if (sel?.kind === "arm") this.tab = "arms";
       else if (sel?.kind === "item") this.tab = "items";
+      else if (sel?.kind === "desk") this.tab = "env";
     }
     const key = this.structureKey();
     if (key !== this.key) {

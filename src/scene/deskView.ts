@@ -12,7 +12,19 @@ export function buildRoom(desk: DeskSpec, wood: THREE.Texture, poster: THREE.Tex
   const edgeMat = std("#1f1611", 0.6);
   const top = mesh(box(W, T, D), [edgeMat, edgeMat, woodMat, edgeMat, edgeMat, edgeMat]);
   top.position.y = -T / 2;
+  top.name = "deskTop";
+  top.userData.pick = { kind: "desk", id: "desk", part: "desk" };
   g.add(top);
+  // Masa seçiliyken görünen çerçeve
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(W + 12, T + 12, D + 12)),
+    new THREE.LineBasicMaterial({ color: "#ff6b35", depthTest: false, transparent: true }),
+  );
+  outline.name = "deskOutline";
+  outline.position.y = -T / 2;
+  outline.renderOrder = 10;
+  outline.visible = false;
+  g.add(outline);
 
   const frame = std("#17181a", 0.45, 0.6);
   const legH = H - T;

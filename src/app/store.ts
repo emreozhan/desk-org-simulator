@@ -3,7 +3,7 @@ import type { IkResult } from "../model/kinematics";
 import { defaultLayout, newArm, newItem } from "../model/defaults";
 import { loadOptions, saveLayout, saveOptions } from "../model/storage";
 
-export type Selection = { kind: "arm"; id: string } | { kind: "item"; id: string } | null;
+export type Selection = { kind: "arm"; id: string } | { kind: "item"; id: string } | { kind: "desk"; id: "desk" } | null;
 
 /** pose: değer değişti; structure: liste/geometri baştan kurulmalı; history: yalnız geri al durumu. */
 export type ChangeReason = "pose" | "structure" | "selection" | "options" | "history" | "notice";
@@ -121,6 +121,7 @@ export class Store {
   }
 
   private exists(sel: NonNullable<Selection>): boolean {
+    if (sel.kind === "desk") return true;
     return sel.kind === "arm" ? !!this.arm(sel.id) : !!this.item(sel.id);
   }
 

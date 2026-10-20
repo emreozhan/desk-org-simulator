@@ -1,12 +1,16 @@
 import * as THREE from "three";
 import type { DeskItem } from "../model/types";
+import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { itemBoundsHeight } from "../model/meta";
+import { HANDLES, handleLocal } from "../model/resize";
 import { DEG } from "../model/vec";
 import { at, box, cyl, disposeTree, mesh, rbox, std, tagPick } from "./parts";
 
 type Builder = (it: DeskItem, g: THREE.Group, ctx: { topo: THREE.Texture }) => void;
 
 const ORANGE = "#e2562f";
+const fmtMm = (v: number): string => String(Math.round(v));
+const tmp = new THREE.Vector3();
 
 const builders: Record<DeskItem["kind"], Builder> = {
   keyboard(it, g) {
@@ -127,7 +131,10 @@ export class ItemView {
   readonly root = new THREE.Group();
   readonly key: string;
   readonly pickables: THREE.Mesh[];
+  /** Seçiliyken görünen boyut tutamakları (ayrı seçilir, gövdenin arkasında kalsa da tutulabilir). */
+  readonly handles: THREE.Mesh[] = [];
   private readonly frame: THREE.LineSegments;
+  private readonly sizeLabel: CSS2DObject;
   private readonly frameMat = new THREE.LineBasicMaterial({ color: "#ff6b35", depthTest: false, transparent: true });
 
   static keyOf(it: DeskItem): string {
@@ -146,6 +153,33 @@ export class ItemView {
     this.frame.position.y = bh / 2;
     this.frame.renderOrder = 10;
     this.root.add(this.frame);
+
+    const handleMat = new THREE.MeshBasicMaterial({ color: "#ff6b35", depthTest: false, transparent: true });
+    for (const id of HANDLES) {
+      const geo = id === "y+" ? new THREE.BoxGeometry(22, 22, 22) : new THREE.SphereGeometry(12, 20, 14);
+      const m = new THREE.Mesh(geo, handleMat);
+      const p = handleLocal(it, id);
+      m.position.set(p.x, p.y, p.z);
+      m.renderOrder = 30;
+      m.userData.pick = { kind: "item", id: it.id, part: "handle", handle: id };
+      // Ekranda sabit boyutta kalsın (≈ 18 px): uzaklaşınca büyür, yakında küçülür. Seçim de bu ölçekle yapılır.
+      m.onBeforeRender = (_r, _s, camera) => {
+        m.getWorldPosition(tmp);
+        m.scale.setScalar(Math.min(4, Math.max(0.6, camera.position.distanceTo(tmp) * 0.0011)));
+      };
+      m.visible = false;
+      this.handles.push(m);
+      this.root.add(m);
+    }
+
+    const el = document.createElement("div");
+    el.className = "dim-label dim-label--size";
+    el.textContent = `${fmtMm(it.w)} × ${fmtMm(it.d)} × ${fmtMm(it.h)} mm`;
+    this.sizeLabel = new CSS2DObject(el);
+    this.sizeLabel.center.set(0.5, 1);
+    this.sizeLabel.position.set(0, bh + 24, 0);
+    this.sizeLabel.visible = false;
+    this.root.add(this.sizeLabel);
   }
 
   apply(it: DeskItem): void {
@@ -156,10 +190,13 @@ export class ItemView {
 
   setState(selected: boolean, colliding: boolean): void {
     this.frame.visible = selected || colliding;
+    for (const h of this.handles) h.visible = selected;
+    this.sizeLabel.visible = selected;
     this.frameMat.color.set(colliding ? "#ff3b3b" : "#ff6b35");
   }
 
   dispose(): void {
+    this.sizeLabel.element.remove();
     disposeTree(this.root);
   }
 }

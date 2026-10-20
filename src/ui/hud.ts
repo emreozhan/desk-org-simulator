@@ -114,8 +114,10 @@ export class Hud {
     this.hint.textContent =
       sel?.kind === "arm"
         ? "A/D omuz · C/V dirsek · S/W kaldırma · Q/E baş · Z/X eğim · R döndürme · oklar/PgUp VESA · Shift: ince"
-        : sel?.kind === "item"
-          ? "Sürükle: taşı · oklar/PgUp: 10 mm · Q/E: ±15° · R: +90° · 0: sıfırla · Del: sil · Shift: ince"
+        : sel?.kind === "desk"
+          ? "Masa seçili · ölçüleri sağ üstteki karttan değiştir"
+          : sel?.kind === "item"
+          ? "Sürükle: taşı · turuncu tutamaklar: boyutlandır · oklar/PgUp: 10 mm · Q/E: ±15° · R: +90° · Del: sil"
           : "Bir monitöre ya da nesneye tıkla · sol tuş: döndür · sağ tuş: kaydır · tekerlek: yakınlaş";
     const n = a.collisions.length;
     this.status.dataset.level = n ? "bad" : "ok";
@@ -163,6 +165,7 @@ export class Hud {
       const p = this.analysis?.arms.get(arm.id)?.monitor?.screen ?? forward(arm).plate;
       t = new THREE.Vector3(p.x, p.y, p.z);
     } else if (it) t = new THREE.Vector3(it.x, it.elevation + it.h / 2, it.z);
+    else if (s.selection?.kind === "desk") t = new THREE.Vector3(0, 0, 0);
     if (!t) return;
     const cam = this.world.camera.position;
     const dir = cam.clone().sub(this.world.controls.target).normalize();

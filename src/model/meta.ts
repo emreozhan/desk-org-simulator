@@ -29,3 +29,13 @@ export function itemBoundsHeight(kind: ItemKind, h: number, d: number): number {
   if (kind === "router") return h + 140;
   return h;
 }
+
+/** Monitör en-boy oranları: [etiket, en, boy]. */
+export const ASPECTS: [string, number, number][] = [
+  ["16:9", 16, 9],
+  ["16:10", 16, 10],
+  ["21:9", 21, 9],
+  ["32:9", 32, 9],
+  ["3:2", 3, 2],
+  ["4:3", 4, 3],
+];

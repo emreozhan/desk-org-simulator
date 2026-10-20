@@ -10,6 +10,7 @@ import { Interaction } from "./scene/interaction";
 import { World } from "./scene/world";
 import { Hud } from "./ui/hud";
 import { Panel } from "./ui/panel";
+import { SizeCard } from "./ui/sizeCard";
 
 const viewport = document.getElementById("viewport")!;
 const store = new Store(loadLayout() ?? defaultLayout());
@@ -17,6 +18,7 @@ const world = new World(viewport);
 const scene = new SceneController(world, store);
 const hud = new Hud(viewport, store, world);
 const panel = new Panel(document.getElementById("panel")!, store);
+const sizeCard = new SizeCard(viewport, store);
 new Interaction(world, store, scene);
 
 const sync = (reason: ChangeReason): void => {
@@ -24,6 +26,7 @@ const sync = (reason: ChangeReason): void => {
   scene.sync(a);
   hud.update(reason, a);
   panel.update(reason, a);
+  sizeCard.update();
 };
 store.on(sync);
 sync("structure");

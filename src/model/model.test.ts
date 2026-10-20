@@ -4,7 +4,8 @@ import { F80_GEOMETRY, F80_LIMITS, ZERO_POSE, defaultLayout } from "./defaults";
 import { clampPose, forward, reachInfo, solveIK } from "./kinematics";
 import { obbIntersects } from "./obb";
 import { parseLayout } from "./storage";
-import type { Arm, OBB } from "./types";
+import { handleLocal, MIN_SIZE, resizeItem } from "./resize";
+import type { Arm, DeskItem, OBB } from "./types";
 import { JOINTS } from "./types";
 import { dist, vec, wrapDeg } from "./vec";
 
@@ -134,5 +135,36 @@ describe("kayıt", () => {
     expect(parseLayout(JSON.parse(JSON.stringify(l)))).not.toBeNull();
     expect(parseLayout({ version: 2, arms: [] })).toBeNull();
     expect(parseLayout("x")).toBeNull();
+  });
+});
+
+describe("boyut tutamakları", () => {
+  const base = (rotY = 0): DeskItem => ({
+    id: "b", kind: "box", name: "b", x: 100, z: 50, elevation: 0, rotY, w: 200, h: 100, d: 80, color: "#000", visible: true,
+  });
+
+  it("sağ yüz sürüklenince sol yüz yerinde kalır", () => {
+    const r = resizeItem(base(), "x+", vec(300, 50, 50));
+    expect(r.w).toBeCloseTo(300);
+    expect(r.x - r.w / 2).toBeCloseTo(0); // sol yüz başta da x=0'daydı
+  });
+
+  it("döndürülmüş nesnede kendi ekseni boyunca büyür", () => {
+    // 90° dönüşte yerel +X dünya −Z'ye bakar.
+    const it = base(90);
+    const r = resizeItem(it, "x+", vec(100, 50, 50 - 150));
+    expect(r.w).toBeCloseTo(250);
+    expect(r.z).toBeCloseTo(50 - 25);
+    expect(r.x).toBeCloseTo(100);
+  });
+
+  it("en küçük ölçünün altına inmez, üst tutamak yüksekliği değiştirir", () => {
+    expect(resizeItem(base(), "z-", vec(100, 0, 500)).d).toBe(MIN_SIZE);
+    expect(resizeItem(base(), "y+", vec(0, 240, 0)).h).toBeCloseTo(240);
+  });
+
+  it("tutamaklar yüzlerin ortasındadır", () => {
+    expect(handleLocal(base(), "x-")).toEqual({ x: -100, y: 50, z: 0 });
+    expect(handleLocal(base(), "y+")).toEqual({ x: 0, y: 100, z: 0 });
   });
 });

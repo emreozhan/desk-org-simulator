@@ -49,6 +49,7 @@ export class SceneController {
       this.room = buildRoom(L.desk, this.wood, this.poster);
       scene.add(this.room);
       this.roomKey = rk;
+      this.pickCache = null;
     }
 
     const armIds = new Set(L.arms.map((x) => x.id));
@@ -100,7 +101,15 @@ export class SceneController {
       v.setState(sel?.kind === "item" && sel.id === it.id, a.collidingItems.has(it.id));
     }
 
+    const outline = this.room?.getObjectByName("deskOutline");
+    if (outline) outline.visible = sel?.kind === "desk";
     this.overlays.update(L, sel, opt, a);
+  }
+
+  /** Seçili nesnenin boyut tutamakları; diğer her şeyden önce denenir. */
+  handlePickables(): THREE.Object3D[] {
+    const sel = this.store.selection;
+    return sel?.kind === "item" ? (this.items.get(sel.id)?.handles ?? []) : [];
   }
 
   pickables(): THREE.Object3D[] {
@@ -108,6 +117,7 @@ export class SceneController {
       this.pickCache = [
         ...[...this.arms.values()].flatMap((v) => v.pickables),
         ...[...this.items.values()].flatMap((v) => v.pickables),
+        ...(this.room ? [this.room.getObjectByName("deskTop")!] : []),
       ];
     }
     return this.pickCache;

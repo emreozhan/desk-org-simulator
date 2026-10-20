@@ -3,7 +3,8 @@ import * as THREE from "three";
 import type { Store } from "../app/store";
 import { wallZ } from "../model/analysis";
 import { forward, solveIK } from "../model/kinematics";
-import type { Vec3 } from "../model/types";
+import type { DeskItem, Vec3 } from "../model/types";
+import { resizeItem } from "../model/resize";
 import { clamp, wrapDeg } from "../model/vec";
 import { JOINT_META } from "../model/meta";
 import { FINE_STEP, ITEM_ROT_STEP, JOINT_BY_CODE, JOINT_STEP, MOVE_STEP, pulse } from "../app/shortcuts";
@@ -20,6 +21,8 @@ interface Drag {
   facing: number;
   moved: boolean;
   start: { x: number; y: number };
+  /** Boyut tutamağı sürüklemesi: başlangıçtaki nesne ve üstünde duranlar. */
+  resize?: { start: DeskItem; riders: { item: DeskItem; elevation: number }[] };
 }
 
 const isTyping = (t: EventTarget | null): boolean =>
@@ -45,13 +48,15 @@ export class Interaction {
     world.renderer.domElement.addEventListener("pointermove", (e) => this.hover(e));
   }
 
-  private hit(e: PointerEvent): { tag: PickTag; point: THREE.Vector3 } | null {
+  private hit(e: PointerEvent): { tag: PickTag; point: THREE.Vector3; object: THREE.Object3D } | null {
     const w = this.world;
     w.raycaster.setFromCamera(w.ndc(e), w.camera);
-    const hits = w.raycaster.intersectObjects(this.scene.pickables(), false);
-    for (const h of hits) {
-      if (!h.object.visible || !isVisible(h.object)) continue;
-      return { tag: h.object.userData.pick as PickTag, point: h.point };
+    // Tutamaklar derinlik testi olmadan çizilir; gövdenin arkasında kalsalar da önce onlar denenir.
+    for (const list of [this.scene.handlePickables(), this.scene.pickables()]) {
+      for (const h of w.raycaster.intersectObjects(list, false)) {
+        if (!h.object.visible || !isVisible(h.object)) continue;
+        return { tag: h.object.userData.pick as PickTag, point: h.point, object: h.object };
+      }
     }
     return null;
   }
@@ -60,7 +65,17 @@ export class Interaction {
     if (this.drag) return;
     const h = this.hit(e);
     const c = this.world.renderer.domElement;
-    c.style.cursor = !h ? "" : h.tag.part === "monitor" || h.tag.part === "item" || h.tag.part === "base" ? "grab" : "pointer";
+    c.style.cursor = !h
+      ? ""
+      : h.tag.part === "handle"
+        ? h.tag.handle === "y+"
+          ? "ns-resize"
+          : "ew-resize"
+        : h.tag.part === "monitor" || h.tag.part === "item" || h.tag.part === "base"
+          ? "grab"
+          : h.tag.part === "desk"
+            ? ""
+            : "pointer";
   }
 
   private onDown(e: PointerEvent): void {
@@ -69,9 +84,14 @@ export class Interaction {
     const h = this.hit(e);
     if (!h) return;
     const { tag } = h;
+    if (tag.kind === "desk") return; // masa tıklama bitince seçilir; basılı sürükleme kamerayı döndürür
     this.store.select({ kind: tag.kind, id: tag.id });
     if (tag.part === "arm") return; // kol gövdesi yalnız seçer
     this.world.controls.enabled = false;
+    if (tag.part === "handle" && tag.handle) {
+      this.startResize(e, tag, h.object);
+      return;
+    }
     const ref = this.refPoint(tag);
     if (!ref) return;
     const vertical = tag.part === "monitor" && !e.shiftKey;
@@ -89,6 +109,43 @@ export class Interaction {
       start: { x: e.clientX, y: e.clientY },
     };
     this.world.renderer.domElement.style.cursor = "grabbing";
+  }
+
+  private startResize(e: PointerEvent, tag: PickTag, handle: THREE.Object3D): void {
+    const it = this.store.item(tag.id);
+    if (!it) return;
+    const ref = handle.getWorldPosition(new THREE.Vector3());
+    const plane = this.makePlane(tag.handle === "y+", ref);
+    const hitPt = new THREE.Vector3();
+    this.world.raycaster.ray.intersectPlane(plane, hitPt);
+    const top = it.elevation + it.h;
+    const riders = this.store.layout.items
+      .filter((o) => o !== it && Math.abs(o.elevation - top) < 6 && Math.abs(o.x - it.x) < it.w / 2 + 20 && Math.abs(o.z - it.z) < it.d / 2 + 20)
+      .map((o) => ({ item: o, elevation: o.elevation }));
+    this.drag = {
+      tag,
+      plane,
+      offset: hitPt.sub(ref),
+      vertical: tag.handle === "y+",
+      facing: 0,
+      moved: false,
+      start: { x: e.clientX, y: e.clientY },
+      resize: { start: structuredClone(it), riders },
+    };
+  }
+
+  private resize(d: Drag, p: THREE.Vector3): void {
+    const it = this.store.item(d.tag.id);
+    if (!it || !d.resize || !d.tag.handle) return;
+    const snap = this.store.options.snap ? (v: number): number => Math.round(v / 5) * 5 : (v: number): number => v;
+    const r = resizeItem(d.resize.start, d.tag.handle, { x: p.x, y: p.y, z: p.z }, snap);
+    const dh = r.h - d.resize.start.h;
+    this.store.mutate(() => {
+      Object.assign(it, r);
+      // Üstte duran nesneler yükseklikle birlikte kalkar.
+      for (const rd of d.resize!.riders) rd.item.elevation = rd.elevation + dh;
+    });
+    this.store.say(`${it.name}: ${Math.round(it.w)} × ${Math.round(it.d)} × ${Math.round(it.h)} mm`);
   }
 
   /** Sürüklenen şeyin referans noktası: VESA eklemi, kolon tabanı ya da nesne tabanı. */
@@ -135,6 +192,10 @@ export class Interaction {
     const p = new THREE.Vector3();
     if (!w.raycaster.ray.intersectPlane(d.plane, p)) return;
     p.sub(d.offset);
+    if (d.resize) {
+      this.resize(d, p);
+      return;
+    }
     const snap = this.store.options.snap ? (v: number): number => Math.round(v / 5) * 5 : (v: number): number => v;
     if (d.tag.kind === "arm" && d.tag.part === "monitor") this.moveMonitor(d, { x: snap(p.x), y: snap(p.y), z: snap(p.z) });
     else if (d.tag.kind === "arm") this.moveBase(d.tag.id, snap(p.x), snap(p.z));
@@ -193,8 +254,12 @@ export class Interaction {
           this.store.say(`Kol bu noktaya ulaşamıyor: en yakın konum ${r.error.toFixed(0)} mm uzakta.`);
       }
     } else if (this.down && e.target === this.world.renderer.domElement) {
-      // Boşluğa tık (sürüklemeden) seçimi kaldırır.
-      if (Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) < 4 && !this.hit(e)) this.store.select(null);
+      // Sürüklemeden tık: masaya ise masayı seçer, boşluğa ise seçimi kaldırır.
+      if (Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) < 4) {
+        const h = this.hit(e);
+        if (!h) this.store.select(null);
+        else if (h.tag.kind === "desk") this.store.select({ kind: "desk", id: "desk" });
+      }
     }
     this.down = null;
   }

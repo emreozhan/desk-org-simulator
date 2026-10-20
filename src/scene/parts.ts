@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import type { HandleId } from "../model/resize";
 
 export const std = (color: string, roughness = 0.6, metalness = 0, extra: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
@@ -52,7 +53,9 @@ export function tagPick(root: THREE.Object3D, pick: PickTag): THREE.Mesh[] {
 }
 
 export interface PickTag {
-  kind: "arm" | "item";
+  kind: "arm" | "item" | "desk";
   id: string;
-  part: "monitor" | "arm" | "base" | "item";
+  part: "monitor" | "arm" | "base" | "item" | "handle" | "desk";
+  /** Boyut tutamağı: hangi yüz. */
+  handle?: HandleId;
 }

@@ -15,6 +15,7 @@ The interface is in Turkish.
 - Collision checks between monitors, arms, wall, desk and desk items
 - Ergonomics readout per monitor: viewing distance, vertical gaze angle, off-axis angle
 - Movable desk items (keyboard, mouse, laptop, PC case, router, speaker, tablet, desk mat …)
+- Resize what you click: drag the orange handles on an item's faces (the opposite face stays put), or use the size card in the top-right corner for items, monitors/arms and the desk
 - Camera presets including a seated eye view
 - Undo/redo, auto-save in the browser, named layouts, JSON import/export
 - A shortcut poster on the wall behind the desk
@@ -56,6 +57,9 @@ Every push to `master` runs type checks, lint and tests, then builds and deploys
 | Shift + drag | Move the monitor forward/back |
 | Drag an arm base | Move the clamp on the desk |
 | Drag an item | Move it on the desk; items standing on it (router on the PC case) move along |
+| Drag an orange handle | Resize the selected item along that face; the top handle changes the height and lifts items standing on it |
+| Click the desk | Select the desk and edit its size in the size card |
+| Size card −/+ or mouse wheel | Step the value (Shift: finer step) |
 | Arrow keys, PageUp/PageDown | Move the selection 10 mm: VESA X/Z/Y for monitors, X/Z/base height for items |
 | A / D | Shoulder rotation −/+ 5° |
 | C / V | Elbow rotation −/+ 5° |
