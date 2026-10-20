@@ -2,6 +2,8 @@
 
 A Three.js simulator for planning a desk setup with North Bayou F80 gas-spring monitor arms. Drag a monitor to where you want it and the simulator solves the arm's joint angles (shoulder, elbow, lift, head swivel, tilt, rotation) with inverse kinematics. It shows unreachable positions, collisions (wall, desk, other monitors, arms, desk items) and ergonomics from the seated eye point as you move things.
 
+**Live demo:** https://emreozhan.github.io/desk-org-simulator/
+
 The interface is in Turkish.
 
 ## Features
@@ -43,6 +45,8 @@ npm run test      # unit tests only
 npm run build     # production build into dist/
 npm run preview   # serve the production build on http://127.0.0.1:4197
 ```
+
+Every push to `master` runs type checks, lint and tests, then builds and deploys the site to GitHub Pages ([.github/workflows/pages.yml](.github/workflows/pages.yml)).
 
 ## Controls
 
